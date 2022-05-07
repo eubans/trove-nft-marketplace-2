@@ -41,7 +41,7 @@ const CreatorArea = ({ className, space, id, data }) => {
                             <SectionTitle
                                 {...data.section_title}
                                 className="mb--0"
-                                disableanimation
+                                disableAnimation
                             />
                         )}
                     </div>

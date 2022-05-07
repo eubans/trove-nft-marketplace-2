@@ -47,7 +47,7 @@ const ExploreProductArea = ({ className, space, data, id }) => {
                         {data?.section_title && (
                             <SectionTitle
                                 className="mb--0"
-                                disableanimation
+                                disableAnimation
                                 {...data.section_title}
                             />
                         )}
