@@ -39,3 +39,6 @@ jspm_packages
 
 # Mac Cache file
 .DS_Store
+public/.DS_Store
+public/images/.DS_Store
+src/.DS_Store
