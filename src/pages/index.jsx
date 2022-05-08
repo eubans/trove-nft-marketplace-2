@@ -35,7 +35,7 @@ const Home02 = () => {
         .slice(0, 5);
     return (
         <Wrapper>
-            <SEO pageTitle="Home Three" />
+            <SEO pageTitle="Home" />
             <Header />
             <main id="main-content">
                 <HeroArea data={content["hero-section"]} />
