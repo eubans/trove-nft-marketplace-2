@@ -8,11 +8,27 @@ import ProductModal from "@components/modals/product-modal";
 import ErrorText from "@ui/error-text";
 import { toast } from "react-toastify";
 
+/* web3 */
+import { ethers } from 'ethers'
+import { create as ipfsHttpClient } from 'ipfs-http-client'
+import Web3Modal from 'web3modal'
+
+const client = ipfsHttpClient('https://ipfs.infura.io:5001/api/v0')
+import {
+    marketplaceAddress
+} from '/smart_contract/config'
+
+import NFTMarketplace from '../../utils/json/NFTMarketplace.json'
+
 const CreateNewArea = ({ className, space }) => {
     const [showProductModal, setShowProductModal] = useState(false);
     const [selectedImage, setSelectedImage] = useState();
     const [hasImageError, setHasImageError] = useState(false);
     const [previewData, setPreviewData] = useState({});
+    
+    /* web3 */
+    const [fileUrl, setFileUrl] = useState(null)
+    const [formInput, updateFormInput] = useState({ price: '', name: '', description: '' })
 
     const {
         register,
@@ -28,10 +44,69 @@ const CreateNewArea = ({ className, space }) => {
         setShowProductModal(false);
     };
 
+    /* web3 */
+    async function onChange(e) {
+    /* upload image to IPFS */
+        const file = e.target.files[0]
+        try {
+            const added = await client.add(
+            file,
+            {
+                progress: (prog) => console.log(`received: ${prog}`)
+            }
+            )
+            const url = `https://ipfs.infura.io/ipfs/${added.path}`
+            setFileUrl(url)
+        } catch (error) {
+            console.log('Error uploading file: ', error)
+        }  
+    }
+
+    async function uploadToIPFS() {
+        const { name, description, price } = formInput
+        if (!name || !description || !price || !fileUrl) return
+        /* first, upload metadata to IPFS */
+        const data = JSON.stringify({
+            name, description, image: fileUrl
+        })
+        try {
+            const added = await client.add(data)
+            const url = `https://ipfs.infura.io/ipfs/${added.path}`
+            /* after metadata is uploaded to IPFS, return the URL to use it in the transaction */
+            return url
+        } catch (error) {
+            console.log('Error uploading file: ', error)
+        }  
+    }
+
+    async function listNFTForSale() {
+        const url = await uploadToIPFS()
+        const web3Modal = new Web3Modal()
+        const connection = await web3Modal.connect()
+        const provider = new ethers.providers.Web3Provider(connection)
+        const signer = provider.getSigner()
+
+        /* create the NFT */
+        const price = ethers.utils.parseUnits(formInput.price, 'ether')
+        
+        let contract = new ethers.Contract(marketplaceAddress, NFTMarketplace.abi, signer)
+        let listingPrice = await contract.getListingPrice()
+        listingPrice = listingPrice.toString()
+        console.log(listingPrice)
+        let transaction = await contract.createToken(url, price, { value: listingPrice })
+        await transaction.wait()
+
+        // router.push('/')
+        alert("done uploading")
+    }
+
     // This function will be triggered when the file field change
     const imageChange = (e) => {
         if (e.target.files && e.target.files.length > 0) {
             setSelectedImage(e.target.files[0]);
+
+            // calling the uploading to IPFS function
+            onChange(e)
         }
     };
 
@@ -49,6 +124,9 @@ const CreateNewArea = ({ className, space }) => {
             notify();
             reset();
             setSelectedImage();
+
+            // calling the listing of NFT function
+            listNFTForSale();
         }
     };
 
@@ -61,7 +139,11 @@ const CreateNewArea = ({ className, space }) => {
                     className
                 )}
             >
-                <form action="#" onSubmit={handleSubmit(onSubmit)}>
+                <form 
+                    action="#" 
+                    onSubmit={handleSubmit(onSubmit)}
+                    // onSubmit={handleSubmit(listNFTForSale)}
+                    >
                     <div className="container">
                         <div className="row g-5">
                             <div className="col-lg-3 offset-1 ml_md--0 ml_sm--0">
@@ -145,6 +227,9 @@ const CreateNewArea = ({ className, space }) => {
                                                         required:
                                                             "Name is required",
                                                     })}
+                                                    onChange={ e => 
+                                                        updateFormInput({ ...formInput, name: e.target.value })
+                                                    }
                                                 />
                                                 {errors.name && (
                                                     <ErrorText>
@@ -173,6 +258,9 @@ const CreateNewArea = ({ className, space }) => {
                                                                 "Discription is required",
                                                         }
                                                     )}
+                                                    onChange={ e => 
+                                                        updateFormInput({ ...formInput, description: e.target.value })
+                                                    }
                                                 />
                                                 {errors.discription && (
                                                     <ErrorText>
@@ -185,17 +273,19 @@ const CreateNewArea = ({ className, space }) => {
                                             </div>
                                         </div>
 
-                                        <div className="col-md-4">
+                                        <div className="col-md-12">
                                             <div className="input-box pb--20">
                                                 <label
                                                     htmlFor="price"
                                                     className="form-label"
                                                 >
-                                                    Item Price in $
+                                                    Item Price in MATIC
                                                 </label>
                                                 <input
                                                     id="price"
                                                     placeholder="e. g. `20$`"
+                                                    type="number"
+                                                    min="0"
                                                     {...register("price", {
                                                         pattern: {
                                                             value: /^[0-9]+$/,
@@ -205,6 +295,9 @@ const CreateNewArea = ({ className, space }) => {
                                                         required:
                                                             "Price is required",
                                                     })}
+                                                    onChange={ e => 
+                                                        updateFormInput({ ...formInput, price: e.target.value })
+                                                    }
                                                 />
                                                 {errors.price && (
                                                     <ErrorText>
@@ -214,7 +307,7 @@ const CreateNewArea = ({ className, space }) => {
                                             </div>
                                         </div>
 
-                                        <div className="col-md-4">
+                                        <div className="col-md-4 d-none">
                                             <div className="input-box pb--20">
                                                 <label
                                                     htmlFor="Size"
@@ -225,10 +318,10 @@ const CreateNewArea = ({ className, space }) => {
                                                 <input
                                                     id="size"
                                                     placeholder="e. g. `Size`"
-                                                    {...register("size", {
-                                                        required:
-                                                            "Size is required",
-                                                    })}
+                                                    // {...register("size", {
+                                                    //     required:
+                                                    //         "Size is required",
+                                                    // })}
                                                 />
                                                 {errors.size && (
                                                     <ErrorText>
@@ -238,7 +331,7 @@ const CreateNewArea = ({ className, space }) => {
                                             </div>
                                         </div>
 
-                                        <div className="col-md-4">
+                                        <div className="col-md-4 d-none">
                                             <div className="input-box pb--20">
                                                 <label
                                                     htmlFor="Propertie"
@@ -249,10 +342,10 @@ const CreateNewArea = ({ className, space }) => {
                                                 <input
                                                     id="propertiy"
                                                     placeholder="e. g. `Propertie`"
-                                                    {...register("propertiy", {
-                                                        required:
-                                                            "Propertiy is required",
-                                                    })}
+                                                    // {...register("propertiy", {
+                                                    //     required:
+                                                    //         "Propertiy is required",
+                                                    // })}
                                                 />
                                                 {errors.propertiy && (
                                                     <ErrorText>
@@ -292,7 +385,23 @@ const CreateNewArea = ({ className, space }) => {
                                             </div>
                                         </div>
 
-                                        <div className="col-md-4 col-sm-4">
+                                        <div className="col-md-12 col-sm-12">
+                                            <div className="input-box pb--20 rn-check-box">
+                                                <input
+                                                    className="rn-check-box-input"
+                                                    type="checkbox"
+                                                    id="freeminting"
+                                                />
+                                                <label
+                                                    className="rn-check-box-label"
+                                                    htmlFor="freeminting"
+                                                >
+                                                    Free minting
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="col-md-4 col-sm-4 d-none">
                                             <div className="input-box pb--20 rn-check-box">
                                                 <input
                                                     className="rn-check-box-input"
@@ -308,7 +417,7 @@ const CreateNewArea = ({ className, space }) => {
                                             </div>
                                         </div>
 
-                                        <div className="col-md-4 col-sm-4">
+                                        <div className="col-md-4 col-sm-4 d-none">
                                             <div className="input-box pb--20 rn-check-box">
                                                 <input
                                                     className="rn-check-box-input"
@@ -324,7 +433,7 @@ const CreateNewArea = ({ className, space }) => {
                                             </div>
                                         </div>
 
-                                        <div className="col-md-4 col-sm-4">
+                                        <div className="col-md-4 col-sm-4 d-none">
                                             <div className="input-box pb--20 rn-check-box">
                                                 <input
                                                     className="rn-check-box-input"
@@ -350,6 +459,9 @@ const CreateNewArea = ({ className, space }) => {
                                                     onClick={handleSubmit(
                                                         onSubmit
                                                     )}
+                                                    // onClick={handleSubmit(
+                                                    //     listNFTForSale
+                                                    // )}
                                                 >
                                                     Preview
                                                 </Button>

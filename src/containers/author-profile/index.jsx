@@ -30,6 +30,7 @@ const AuthorProfileArea = ({ className, data }) => {
                                         <Nav.Link
                                             as="button"
                                             eventKey="nav-home"
+                                            className="d-none"
                                         >
                                             On Sale
                                         </Nav.Link>
@@ -42,12 +43,14 @@ const AuthorProfileArea = ({ className, data }) => {
                                         <Nav.Link
                                             as="button"
                                             eventKey="nav-contact"
+                                            className="d-none"
                                         >
                                             Created
                                         </Nav.Link>
                                         <Nav.Link
                                             as="button"
                                             eventKey="nav-liked"
+                                            className="d-none"
                                         >
                                             Liked
                                         </Nav.Link>
@@ -58,7 +61,7 @@ const AuthorProfileArea = ({ className, data }) => {
                     </div>
 
                     <TabContent className="tab-content rn-bid-content">
-                        <TabPane className="row d-flex g-5" eventKey="nav-home">
+                        <TabPane className="row d-flex g-5 d-none" eventKey="nav-home">
                             {onSaleProducts?.map((prod) => (
                                 <div
                                     key={prod.id}
@@ -106,7 +109,7 @@ const AuthorProfileArea = ({ className, data }) => {
                             ))}
                         </TabPane>
                         <TabPane
-                            className="row g-5 d-flex"
+                            className="row g-5 d-flexd-none"
                             eventKey="nav-contact"
                         >
                             {createdProducts?.map((prod) => (
@@ -131,7 +134,7 @@ const AuthorProfileArea = ({ className, data }) => {
                             ))}
                         </TabPane>
                         <TabPane
-                            className="row g-5 d-flex"
+                            className="row g-5 d-flex d-none"
                             eventKey="nav-liked"
                         >
                             {likedProducts?.map((prod) => (

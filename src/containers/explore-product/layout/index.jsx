@@ -8,6 +8,17 @@ import FilterButtons from "@components/filter-buttons";
 import { flatDeep } from "@utils/methods";
 import { SectionTitleType, ProductType } from "@utils/types";
 
+/* web3 */
+import { ethers } from 'ethers'
+import axios from 'axios'
+import Web3Modal from 'web3modal'
+
+import {
+    marketplaceAddress
+} from '/smart_contract/config'
+
+import NFTMarketplace from '../../../utils/json/NFTMarketplace.json'
+
 const ExploreProductArea = ({ className, space, data }) => {
     const filters = [
         ...new Set(
@@ -15,9 +26,53 @@ const ExploreProductArea = ({ className, space, data }) => {
         ),
     ];
     const [products, setProducts] = useState([]);
+
+    /* web3 */
+    const [nfts, setNfts] = useState([])
+    const [loadingState, setLoadingState] = useState('not-loaded')
     useEffect(() => {
         setProducts(data?.products);
+        
+        /* web3 */
+        loadNFTs()
     }, [data?.products]);
+
+
+    /* web3 */
+    async function loadNFTs() {
+        const web3Modal = new Web3Modal({
+            network: 'mainnet',
+            cacheProvider: true,
+        })
+        const connection = await web3Modal.connect()
+        const provider = new ethers.providers.Web3Provider(connection)
+        const signer = provider.getSigner()
+    
+        const contract = new ethers.Contract(marketplaceAddress, NFTMarketplace.abi, signer)
+        const data = await contract.fetchItemsListed()
+    
+        const items = await Promise.all(data.map(async i => {
+            const tokenUri = await contract.tokenURI(i.tokenId)
+            const meta = await axios.get(tokenUri)
+            let price = ethers.utils.formatUnits(i.price.toString(), 'ether')
+            // let item = {
+            //     price,
+            //     tokenId: i.tokenId.toNumber(),
+            //     seller: i.seller,
+            //     owner: i.owner,
+            //     image: meta.data.image,
+            // }
+            let item = {
+                ...i,
+                image: meta.data
+            }
+            return item
+        }))
+        
+        console.log(items)
+        setNfts(items)
+        setLoadingState('loaded') 
+    }
 
     const filterHandler = (filterKey) => {
         const prods = data?.products ? [...data.products] : [];
